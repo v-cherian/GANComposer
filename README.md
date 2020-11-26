@@ -4,6 +4,13 @@
 
 This project is a PyTorch implementation of [C-RNN-GAN](https://github.com/olofmogren/c-rnn-gan), which was originally developed in TensorFlow. In a nutshell, C-RNN-GAN is a GAN variant where both the Generator and the Discriminator are RNNs, with each output at each timestep from the Generator correspondingly fed into each timestep as input to the Discriminator. The goal is to train the Generator to output structured sequences, such as MIDI music which was used in the paper. If you'd like to know more, head over to this [link](http://mogren.one/publications/2016/c-rnn-gan/) or read the [paper](http://mogren.one/publications/2016/c-rnn-gan/mogren2016crnngan.pdf).
 
+## Setup
+
+To install `midi` package, execute the following to install directly from git:
+```
+pip install git+https://github.com/vishnubob/python-midi@feature/python3
+```
+
 ## Status
 
 The implementation can work well on simple sequences such as `a(n+1) = 2*a(n)`, where each element is twice of the previous. You can try this by executing:
@@ -17,7 +24,7 @@ This runs for 200 epochs, after which you should get something similar to this:
 When fed with MIDI data, training of this C-RNN-GAN implementation tends to be unstable. A lot of hyperparameter tweaking and training techniques such as freezing have been implemented, in which I managed to generate some convincing MIDI music, but not reproducible even while using the same set of hyperparameters and techniques. Nevertheless, I'll share these runs:
 
 ```
-$ python train.py --g_lrn_rate=0.0001 --d_lrn_rate=0.0004 --g_pretraining_epochs=10 --d_pretraining_epochs=10 --label_smoothing 
+$ python train.py --g_lrn_rate=0.0001 --d_lrn_rate=0.0004 --g_pretraining_epochs=10 --d_pretraining_epochs=10 --label_smoothing
 ```
 * Adam optimizer for both G and D, with learning rates 0.0001 and 0.0004, respectively
 * Pre-trains G and D independently for 10 epochs i.e. Train G for 10 epochs with D frozen & vice versa
@@ -39,7 +46,7 @@ This implementation is not an exact port of the original. These are some of the 
 
 * Different set of hyperparameters
 * Added label smoothing
-* Added option to use Adam optimization 
+* Added option to use Adam optimization
 * Pitch is not represented as frequency, but simply as numerical representation of each tone in MIDI (e.g. C3 = 60)
 * Training is done only on small subset of classical data (sonata-sounding pieces of Mozart in particular, see [sonata-ish](data/classical/sonata-ish))
 

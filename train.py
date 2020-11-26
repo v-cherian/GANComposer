@@ -27,7 +27,6 @@ from torch import optim
 from c_rnn_gan import Generator, Discriminator
 import music_data_utils
 
-DATA_DIR = 'data'
 CKPT_DIR = 'models'
 COMPOSER = 'sonata-ish'
 
@@ -90,7 +89,7 @@ class DLoss(nn.Module):
 def run_training(model, optimizer, criterion, dataloader, freeze_g=False, freeze_d=False):
     ''' Run single training epoch
     '''
-    
+
     num_feats = dataloader.get_num_song_features()
     dataloader.rewind(part='train')
     batch_meta, batch_song = dataloader.get_batch(BATCH_SIZE, MAX_SEQ_LEN, part='train')
@@ -266,7 +265,7 @@ def run_epoch(model, optimizer, criterion, dataloader, ep, num_ep,
     song_data = song_data.detach().numpy()
 
     if (ep+1) == num_ep:
-        midi_data = dataloader.save_data('sample.mid', song_data)
+        midi_data = dataloader.save_data('sample' + '_'+time.strftime("%d%m%Y-%H%M%S"))+'.mid', song_data)
     else:
         midi_data = dataloader.save_data(None, song_data)
         print(midi_data[0][:16])
@@ -278,7 +277,7 @@ def run_epoch(model, optimizer, criterion, dataloader, ep, num_ep,
 def main(args):
     ''' Training sequence
     '''
-    dataloader = music_data_utils.MusicDataLoader(DATA_DIR, single_composer=COMPOSER)
+    dataloader = music_data_utils.MusicDataLoader(args.data_dir, composers = args.composers)
     num_feats = dataloader.get_num_song_features()
 
     # First checking if GPU is available
@@ -355,29 +354,32 @@ def main(args):
 
 if __name__ == "__main__":
 
-    ARG_PARSER = ArgumentParser()
-    ARG_PARSER.add_argument('--load_g', action='store_true')
-    ARG_PARSER.add_argument('--load_d', action='store_true')
-    ARG_PARSER.add_argument('--no_save_g', action='store_true')
-    ARG_PARSER.add_argument('--no_save_d', action='store_true')
+    parser = ArgumentParser()
+    parser.add_argument('--load_g', action='store_true')
+    parser.add_argument('--load_d', action='store_true')
+    parser.add_argument('--no_save_g', action='store_true')
+    parser.add_argument('--no_save_d', action='store_true')
 
-    ARG_PARSER.add_argument('--num_epochs', default=300, type=int)
-    ARG_PARSER.add_argument('--seq_len', default=256, type=int)
-    ARG_PARSER.add_argument('--batch_size', default=16, type=int)
-    ARG_PARSER.add_argument('--g_lrn_rate', default=0.001, type=float)
-    ARG_PARSER.add_argument('--d_lrn_rate', default=0.001, type=float)
+    parser.add_argument('--data_dir', default = 'data/maestro-v2.0.0')
+    parser.add_argument('--composers', nargs = '+', default=None)
+    # parser.add_argument('--redo_split', action='store_true')  # add in flag to use saved variable
+    parser.add_argument('--num_epochs', default=300, type=int)
+    parser.add_argument('--seq_len', default=256, type=int)
+    parser.add_argument('--batch_size', default=16, type=int)
+    parser.add_argument('--g_lrn_rate', default=0.001, type=float)
+    parser.add_argument('--d_lrn_rate', default=0.001, type=float)
 
-    ARG_PARSER.add_argument('--no_pretraining', action='store_true')
-    ARG_PARSER.add_argument('--g_pretraining_epochs', default=5, type=int)
-    ARG_PARSER.add_argument('--d_pretraining_epochs', default=5, type=int)
-    # ARG_PARSER.add_argument('--freeze_d_every', default=5, type=int)
-    ARG_PARSER.add_argument('--use_sgd', action='store_true')
-    ARG_PARSER.add_argument('--conditional_freezing', action='store_true')
-    ARG_PARSER.add_argument('--label_smoothing', action='store_true')
-    ARG_PARSER.add_argument('--feature_matching', action='store_true')
+    parser.add_argument('--no_pretraining', action='store_true')
+    parser.add_argument('--g_pretraining_epochs', default=5, type=int)
+    parser.add_argument('--d_pretraining_epochs', default=5, type=int)
+    # parser.add_argument('--freeze_d_every', default=5, type=int)
+    parser.add_argument('--use_sgd', action='store_true')
+    parser.add_argument('--conditional_freezing', action='store_true')
+    parser.add_argument('--label_smoothing', action='store_true')
+    parser.add_argument('--feature_matching', action='store_true')
 
-    ARGS = ARG_PARSER.parse_args()
-    MAX_SEQ_LEN = ARGS.seq_len
-    BATCH_SIZE = ARGS.batch_size
+    args = parser.parse_args()
+    MAX_SEQ_LEN = args.seq_len
+    BATCH_SIZE = args.batch_size
 
-    main(ARGS)
+    main(args)
