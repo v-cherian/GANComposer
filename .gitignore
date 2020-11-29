@@ -128,8 +128,9 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# ignore data
+# ignore data and midi samples
 data/
+samples/
 
 #DS_Store
 .DS_Store

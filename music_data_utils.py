@@ -104,7 +104,7 @@ def de_norm_minmax(song_data, ix):
 
 class MusicDataLoader(object):
 
-  def __init__(self, datadir, pace_events=False, tones_per_cell=1, composers=None):
+  def __init__(self, datadir, pace_events=False, tones_per_cell=1, composers=None, redo_split = False):
     self.datadir = datadir.rstrip(os.sep)
     self.output_ticks_per_quarter_note = 384.0
     self.tones_per_cell = tones_per_cell
@@ -115,7 +115,24 @@ class MusicDataLoader(object):
     self.pointer['train'] = 0
     if not datadir is None:
       print ('Data loader: datadir: {}'.format(datadir))
-      self.read_data(pace_events)
+      if redo_split:
+        self.read_data(pace_events)
+      else:
+        if self.composers is None:
+          saved_songs_path = os.path.join(self.datadir,'saved_songs','all_composers.txt')
+        else:
+          saved_songs_path = os.path.join(self.datadir,'saved_songs',str(len(self.composers)) + '_composers.txt')
+          print('WARNING: using previous songs state at ' + saved_songs_path)
+          print('use --redo_split if this composer list is different from the one used for above state')
+
+        if not os.path.exists(saved_songs_path):
+          print('--redo_split flag excluded but saved variable not found at ' + saved_songs_path)
+          print('Redoing split')
+          self.read_data(pace_events)
+        else:
+          print('Using saved songs state at ' + saved_songs_path)
+          with open(saved_songs_path,'rb') as fp:
+            self.songs = pickle.load(fp)
 
 
   # def read_data(self, pace_events):
@@ -291,12 +308,13 @@ class MusicDataLoader(object):
           os.makedirs(saved_songs_path)
 
       if composers_specified:
-        saved_songs_path = os.path.join(saved_songs_path,str(len(self.composers))+'_composers_' + time.strftime("%d%m%Y-%H%M%S") + '.txt')
+        saved_songs_path = os.path.join(saved_songs_path,str(len(self.composers))+'_composers.txt')
       else:
-        saved_songs_path = os.path.join(saved_songs_path,'all_composers_' + time.strftime("%d%m%Y-%H%M%S") + '.txt')
+        saved_songs_path = os.path.join(saved_songs_path,'all_composers.txt')
 
-      with open(saved_songs_path,'wb') as f:
-          pickle.dump(self.songs, f)
+      print('Saving songs state in ' + saved_songs_path)
+      with open(saved_songs_path,'wb') as fp:
+          pickle.dump(self.songs, fp)
       return self.songs
 
 

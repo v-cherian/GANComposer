@@ -26,6 +26,7 @@ from torch import optim
 
 from c_rnn_gan import Generator, Discriminator
 import music_data_utils
+import time
 
 CKPT_DIR = 'models'
 COMPOSER = 'sonata-ish'
@@ -41,6 +42,8 @@ MAX_SEQ_LEN = 200
 BATCH_SIZE = 32
 
 EPSILON = 1e-40 # value to use to approximate zero (to prevent undefined results)
+
+START_TIME = time.strftime("%m%d%Y_%H%M%S")
 
 class GLoss(nn.Module):
     ''' C-RNN-GAN generator loss
@@ -265,7 +268,7 @@ def run_epoch(model, optimizer, criterion, dataloader, ep, num_ep,
     song_data = song_data.detach().numpy()
 
     if (ep+1) == num_ep:
-        midi_data = dataloader.save_data('sample' + '_'+time.strftime("%d%m%Y-%H%M%S"))+'.mid', song_data)
+        midi_data = dataloader.save_data('sample' + '_'+START_TIME+'.mid', song_data)
     else:
         midi_data = dataloader.save_data(None, song_data)
         print(midi_data[0][:16])
@@ -277,7 +280,7 @@ def run_epoch(model, optimizer, criterion, dataloader, ep, num_ep,
 def main(args):
     ''' Training sequence
     '''
-    dataloader = music_data_utils.MusicDataLoader(args.data_dir, composers = args.composers)
+    dataloader = music_data_utils.MusicDataLoader(args.data_dir, composers = args.composers, redo_split = args.redo_split)
     num_feats = dataloader.get_num_song_features()
 
     # First checking if GPU is available
@@ -362,7 +365,7 @@ if __name__ == "__main__":
 
     parser.add_argument('--data_dir', default = 'data/maestro-v2.0.0')
     parser.add_argument('--composers', nargs = '+', default=None)
-    # parser.add_argument('--redo_split', action='store_true')  # add in flag to use saved variable
+    parser.add_argument('--redo_split', action='store_true')  # add in flag to use saved variable
     parser.add_argument('--num_epochs', default=300, type=int)
     parser.add_argument('--seq_len', default=256, type=int)
     parser.add_argument('--batch_size', default=16, type=int)
