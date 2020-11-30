@@ -129,7 +129,10 @@ dmypy.json
 .pyre/
 
 # ignore data and midi samples
-data/
+saved_songs/
+test/
+train/
+validation/
 samples/
 models/
 
