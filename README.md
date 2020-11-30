@@ -6,10 +6,15 @@ This project is a PyTorch implementation of [C-RNN-GAN](https://github.com/olofm
 
 ## Setup
 
-To install `midi` package, execute the following to install directly from git:
+Install the following packages with pip:
+
 ```
+pip install torch
+pip install pandas
 pip install git+https://github.com/vishnubob/python-midi@feature/python3
 ```
+
+Note: do not install midi via `pip install py-midi`. This will result in `AttributeError: module 'midi' has no attribute 'Pattern'` when training. The last `pip install` line above installs directly from git which should not produce this error.
 
 ## Status
 
