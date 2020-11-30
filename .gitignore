@@ -131,6 +131,7 @@ dmypy.json
 # ignore data and midi samples
 data/
 samples/
+models/
 
 #DS_Store
 .DS_Store
