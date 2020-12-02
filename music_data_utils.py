@@ -59,23 +59,6 @@ NZ = {
 debug = ''
 #debug = 'overfit'
 
-sources                              = {}
-sources['classical']                 = {}
-
-file_list = {}
-
-file_list['validation'] = [
-'classical/sonata-ish/mozk333c.mid', \
-'classical/sonata-ish/mozk331b.mid', \
-'classical/sonata-ish/mozk313a.mid', \
-'classical/sonata-ish/mozk310b.mid', \
-'classical/sonata-ish/mozk299a.mid', \
-'classical/sonata-ish/mozk622c.mid', \
-'classical/sonata-ish/mozk545b.mid', \
-'classical/sonata-ish/mozk299a.mid'
-]
-
-file_list['test'] = []
 
 
 # normalization, de-normalization functions
@@ -475,7 +458,6 @@ class MusicDataLoader(object):
       A tone  has a feature telling us the pause before it.
 
     """
-    print(self.songs['train'][SONG_DATA])
     #print (('get_batch(): pointer: {}, len: {}, batchsize: {}'.format(self.pointer[part], len(self.songs[part]), batchsize))
     if self.pointer[part] > len(self.songs[part])-batchsize:
       batchsize = len(self.songs[part]) - self.pointer[part]
