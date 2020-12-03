@@ -27,6 +27,7 @@ from torch import optim
 from c_rnn_gan import Generator, Discriminator
 import music_data_utils
 import time
+import matplotlib.pyplot as plt
 
 CKPT_DIR = 'models'
 COMPOSER = 'sonata-ish'
@@ -41,13 +42,16 @@ MAX_GRAD_NORM = 5.0
 MAX_SEQ_LEN = 200
 BATCH_SIZE = 32
 
-EPSILON = 1e-40 # value to use to approximate zero (to prevent undefined results)
+# value to use to approximate zero (to prevent undefined results)
+EPSILON = 1e-40
 
 START_TIME = time.strftime("%m%d%Y_%H%M%S")
+
 
 class GLoss(nn.Module):
     ''' C-RNN-GAN generator loss
     '''
+
     def __init__(self):
         super(GLoss, self).__init__()
 
@@ -61,6 +65,7 @@ class GLoss(nn.Module):
 class DLoss(nn.Module):
     ''' C-RNN-GAN discriminator loss
     '''
+
     def __init__(self, label_smoothing=False):
         super(DLoss, self).__init__()
         self.label_smoothing = label_smoothing
@@ -95,7 +100,8 @@ def run_training(model, optimizer, criterion, dataloader, freeze_g=False, freeze
 
     num_feats = dataloader.get_num_song_features()
     dataloader.rewind(part='train')
-    batch_meta, batch_song = dataloader.get_batch(BATCH_SIZE, MAX_SEQ_LEN, part='train')
+    batch_meta, batch_song = dataloader.get_batch(
+        BATCH_SIZE, MAX_SEQ_LEN, part='train')
 
     model['g'].train()
     model['d'].train()
@@ -121,7 +127,8 @@ def run_training(model, optimizer, criterion, dataloader, freeze_g=False, freeze
         if not freeze_g:
             optimizer['g'].zero_grad()
         # prepare inputs
-        z = torch.empty([real_batch_sz, MAX_SEQ_LEN, num_feats]).uniform_() # random vector
+        z = torch.empty([real_batch_sz, MAX_SEQ_LEN, num_feats]
+                        ).uniform_()  # random vector
         batch_song = torch.Tensor(batch_song)
 
         # feed inputs to generator
@@ -131,7 +138,7 @@ def run_training(model, optimizer, criterion, dataloader, freeze_g=False, freeze
         if isinstance(criterion['g'], GLoss):
             d_logits_gen, _, _ = model['d'](g_feats, d_state)
             loss['g'] = criterion['g'](d_logits_gen)
-        else: # feature matching
+        else:  # feature matching
             # feed real and generated input to discriminator
             _, d_feats_real, _ = model['d'](batch_song, d_state)
             _, d_feats_gen, _ = model['d'](g_feats, d_state)
@@ -139,7 +146,8 @@ def run_training(model, optimizer, criterion, dataloader, freeze_g=False, freeze
 
         if not freeze_g:
             loss['g'].backward()
-            nn.utils.clip_grad_norm_(model['g'].parameters(), max_norm=MAX_GRAD_NORM)
+            nn.utils.clip_grad_norm_(
+                model['g'].parameters(), max_norm=MAX_GRAD_NORM)
             optimizer['g'].step()
 
         #### DISCRIMINATOR ####
@@ -153,23 +161,27 @@ def run_training(model, optimizer, criterion, dataloader, freeze_g=False, freeze
         loss['d'] = criterion['d'](d_logits_real, d_logits_gen)
         if not freeze_d:
             loss['d'].backward()
-            nn.utils.clip_grad_norm_(model['d'].parameters(), max_norm=MAX_GRAD_NORM)
+            nn.utils.clip_grad_norm_(
+                model['d'].parameters(), max_norm=MAX_GRAD_NORM)
             optimizer['d'].step()
 
         g_loss_total += loss['g'].item()
         d_loss_total += loss['d'].item()
-        num_corrects += (d_logits_real > 0.5).sum().item() + (d_logits_gen < 0.5).sum().item()
+        num_corrects += (d_logits_real > 0.5).sum().item() + \
+            (d_logits_gen < 0.5).sum().item()
         num_sample += real_batch_sz
 
         # fetch next batch
-        batch_meta, batch_song = dataloader.get_batch(BATCH_SIZE, MAX_SEQ_LEN, part='train')
+        batch_meta, batch_song = dataloader.get_batch(
+            BATCH_SIZE, MAX_SEQ_LEN, part='train')
 
     g_loss_avg, d_loss_avg = 0.0, 0.0
     d_acc = 0.0
     if num_sample > 0:
         g_loss_avg = g_loss_total / num_sample
         d_loss_avg = d_loss_total / num_sample
-        d_acc = 100 * num_corrects / (2 * num_sample) # 2 because (real + generated)
+        # 2 because (real + generated)
+        d_acc = 100 * num_corrects / (2 * num_sample)
 
     return model, g_loss_avg, d_loss_avg, d_acc
 
@@ -179,7 +191,8 @@ def run_validation(model, criterion, dataloader):
     '''
     num_feats = dataloader.get_num_song_features()
     dataloader.rewind(part='validation')
-    batch_meta, batch_song = dataloader.get_batch(BATCH_SIZE, MAX_SEQ_LEN, part='validation')
+    batch_meta, batch_song = dataloader.get_batch(
+        BATCH_SIZE, MAX_SEQ_LEN, part='validation')
 
     model['g'].eval()
     model['d'].eval()
@@ -199,7 +212,8 @@ def run_validation(model, criterion, dataloader):
 
         #### GENERATOR ####
         # prepare inputs
-        z = torch.empty([real_batch_sz, MAX_SEQ_LEN, num_feats]).uniform_() # random vector
+        z = torch.empty([real_batch_sz, MAX_SEQ_LEN, num_feats]
+                        ).uniform_()  # random vector
         batch_song = torch.Tensor(batch_song)
 
         # feed inputs to generator
@@ -210,25 +224,28 @@ def run_validation(model, criterion, dataloader):
         # calculate loss
         if isinstance(criterion['g'], GLoss):
             g_loss = criterion['g'](d_logits_gen)
-        else: # feature matching
+        else:  # feature matching
             g_loss = criterion['g'](d_feats_real, d_feats_gen)
 
         d_loss = criterion['d'](d_logits_real, d_logits_gen)
 
         g_loss_total += g_loss.item()
         d_loss_total += d_loss.item()
-        num_corrects += (d_logits_real > 0.5).sum().item() + (d_logits_gen < 0.5).sum().item()
+        num_corrects += (d_logits_real > 0.5).sum().item() + \
+            (d_logits_gen < 0.5).sum().item()
         num_sample += real_batch_sz
 
         # fetch next batch
-        batch_meta, batch_song = dataloader.get_batch(BATCH_SIZE, MAX_SEQ_LEN, part='validation')
+        batch_meta, batch_song = dataloader.get_batch(
+            BATCH_SIZE, MAX_SEQ_LEN, part='validation')
 
     g_loss_avg, d_loss_avg = 0.0, 0.0
     d_acc = 0.0
     if num_sample > 0:
         g_loss_avg = g_loss_total / num_sample
         d_loss_avg = d_loss_total / num_sample
-        d_acc = 100 * num_corrects / (2 * num_sample) # 2 because (real + generated)
+        # 2 because (real + generated)
+        d_acc = 100 * num_corrects / (2 * num_sample)
 
     return g_loss_avg, d_loss_avg, d_acc
 
@@ -238,14 +255,18 @@ def run_epoch(model, optimizer, criterion, dataloader, ep, num_ep,
     ''' Run a single epoch
     '''
     model, trn_g_loss, trn_d_loss, trn_acc = \
-        run_training(model, optimizer, criterion, dataloader, freeze_g=freeze_g, freeze_d=freeze_d)
+        run_training(model, optimizer, criterion, dataloader,
+                     freeze_g=freeze_g, freeze_d=freeze_d)
 
-    val_g_loss, val_d_loss, val_acc = run_validation(model, criterion, dataloader)
+    val_g_loss, val_d_loss, val_acc = run_validation(
+        model, criterion, dataloader)
 
     if pretraining:
-        print("Pretraining Epoch %d/%d " % (ep+1, num_ep), "[Freeze G: ", freeze_g, ", Freeze D: ", freeze_d, "]")
+        print("Pretraining Epoch %d/%d " % (ep+1, num_ep),
+              "[Freeze G: ", freeze_g, ", Freeze D: ", freeze_d, "]")
     else:
-        print("Epoch %d/%d " % (ep+1, num_ep), "[Freeze G: ", freeze_g, ", Freeze D: ", freeze_d, "]")
+        print("Epoch %d/%d " % (ep+1, num_ep),
+              "[Freeze G: ", freeze_g, ", Freeze D: ", freeze_d, "]")
 
     print("\t[Training] G_loss: %0.8f, D_loss: %0.8f, D_acc: %0.2f\n"
           "\t[Validation] G_loss: %0.8f, D_loss: %0.8f, D_acc: %0.2f" %
@@ -257,7 +278,7 @@ def run_epoch(model, optimizer, criterion, dataloader, ep, num_ep,
     # generate from model then save to MIDI file
     g_states = model['g'].init_hidden(1)
     num_feats = dataloader.get_num_song_features()
-    z = torch.empty([1, MAX_SEQ_LEN, num_feats]).uniform_() # random vector
+    z = torch.empty([1, MAX_SEQ_LEN, num_feats]).uniform_()  # random vector
     if torch.cuda.is_available():
         z = z.cuda()
         model['g'].cuda()
@@ -268,19 +289,21 @@ def run_epoch(model, optimizer, criterion, dataloader, ep, num_ep,
     song_data = song_data.detach().numpy()
 
     if (ep+1) == num_ep:
-        midi_data = dataloader.save_data('sample' + '_'+START_TIME+'.mid', song_data)
+        midi_data = dataloader.save_data(
+            'sample' + '_'+START_TIME+'.mid', song_data)
     else:
         midi_data = dataloader.save_data(None, song_data)
         print(midi_data[0][:16])
     # -- DEBUG --
 
-    return model, trn_acc
+    return model, trn_acc, trn_g_loss, trn_d_loss, val_g_loss, val_d_loss
 
 
 def main(args):
     ''' Training sequence
     '''
-    dataloader = music_data_utils.MusicDataLoader(args.data_dir, composers = args.composers, redo_split = args.redo_split)
+    dataloader = music_data_utils.MusicDataLoader(
+        args.data_dir, composers=args.composers, redo_split=args.redo_split)
     num_feats = dataloader.get_num_song_features()
 
     # First checking if GPU is available
@@ -327,19 +350,23 @@ def main(args):
 
     if not args.no_pretraining:
         for ep in range(args.d_pretraining_epochs):
-            model, _ = run_epoch(model, optimizer, criterion, dataloader,
-                              ep, args.d_pretraining_epochs, freeze_g=True, pretraining=True)
+            model, _, _, _, _, _ = run_epoch(model, optimizer, criterion, dataloader,
+                                             ep, args.d_pretraining_epochs, freeze_g=True, pretraining=True)
 
         for ep in range(args.g_pretraining_epochs):
-            model, _ = run_epoch(model, optimizer, criterion, dataloader,
-                              ep, args.g_pretraining_epochs, freeze_d=True, pretraining=True)
+            model, _, _, _, _, _ = run_epoch(model, optimizer, criterion, dataloader,
+                                             ep, args.g_pretraining_epochs, freeze_d=True, pretraining=True)
 
     freeze_d = False
-    for ep in range(args.num_epochs):
-        # if ep % args.freeze_d_every == 0:
-        #     freeze_d = not freeze_d
+    losses = []
 
-        model, trn_acc = run_epoch(model, optimizer, criterion, dataloader, ep, args.num_epochs, freeze_d=freeze_d)
+    for ep in range(args.num_epochs):
+        model, trn_acc,  trn_g_loss, trn_d_loss, val_g_loss, val_d_loss = run_epoch(
+            model, optimizer, criterion, dataloader, ep, args.num_epochs, freeze_d=freeze_d)
+
+        losses.append([trn_g_loss, trn_d_loss, val_g_loss,
+                       val_d_loss])  # store losses
+
         if args.conditional_freezing:
             # conditional freezing
             freeze_d = False
@@ -354,6 +381,15 @@ def main(args):
         torch.save(model['d'].state_dict(), os.path.join(CKPT_DIR, D_FN))
         print("Saved discriminator: %s" % os.path.join(CKPT_DIR, D_FN))
 
+    if args.plot_loss:
+        _, ax = plt.subplots()
+        ax.plot([loss[0] for loss in losses], label='G Training Loss')
+        ax.plot([loss[1] for loss in losses], label='D Training Loss')
+        ax.plot([loss[2] for loss in losses], label='G Validation Loss')
+        ax.plot([loss[3] for loss in losses], label='D Validation Loss')
+        plt.legend()
+        plt.show()
+
 
 if __name__ == "__main__":
 
@@ -363,9 +399,10 @@ if __name__ == "__main__":
     parser.add_argument('--no_save_g', action='store_true')
     parser.add_argument('--no_save_d', action='store_true')
 
-    parser.add_argument('--data_dir', default = 'data/maestro-v2.0.0')
-    parser.add_argument('--composers', nargs = '+', default=None)
-    parser.add_argument('--redo_split', action='store_true')  # add in flag to use saved variable
+    parser.add_argument('--data_dir', default='data/maestro-v2.0.0')
+    parser.add_argument('--composers', nargs='+', default=None)
+    # add in flag to use saved variable
+    parser.add_argument('--redo_split', action='store_true')
     parser.add_argument('--num_epochs', default=300, type=int)
     parser.add_argument('--seq_len', default=256, type=int)
     parser.add_argument('--batch_size', default=16, type=int)
@@ -380,6 +417,7 @@ if __name__ == "__main__":
     parser.add_argument('--conditional_freezing', action='store_true')
     parser.add_argument('--label_smoothing', action='store_true')
     parser.add_argument('--feature_matching', action='store_true')
+    parser.add_argument('--plot_loss', action='store_true')
 
     args = parser.parse_args()
     MAX_SEQ_LEN = args.seq_len
