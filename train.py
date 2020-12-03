@@ -394,30 +394,50 @@ def main(args):
 if __name__ == "__main__":
 
     parser = ArgumentParser()
-    parser.add_argument('--load_g', action='store_true')
-    parser.add_argument('--load_d', action='store_true')
-    parser.add_argument('--no_save_g', action='store_true')
-    parser.add_argument('--no_save_d', action='store_true')
+    parser.add_argument('--load_g', action='store_true',
+                        help="load G model parameters")
+    parser.add_argument('--load_d', action='store_true',
+                        help="load D model parameters")
+    parser.add_argument('--no_save_g', action='store_true',
+                        help="do not save G parameters")
+    parser.add_argument('--no_save_d', action='store_true',
+                        help="do not save D parameters")
 
-    parser.add_argument('--data_dir', default='data/maestro-v2.0.0')
-    parser.add_argument('--composers', nargs='+', default=None)
+    parser.add_argument(
+        '--data_dir', default='data/maestro-v2.0.0', help="path to data directory")
+    parser.add_argument('--composers', nargs='+',
+                        default=None, help="composers to train on")
     # add in flag to use saved variable
-    parser.add_argument('--redo_split', action='store_true')
-    parser.add_argument('--num_epochs', default=300, type=int)
-    parser.add_argument('--seq_len', default=256, type=int)
-    parser.add_argument('--batch_size', default=16, type=int)
-    parser.add_argument('--g_lrn_rate', default=0.001, type=float)
-    parser.add_argument('--d_lrn_rate', default=0.001, type=float)
+    parser.add_argument('--redo_split', action='store_true',
+                        help="use saved variables")
+    parser.add_argument('--num_epochs', default=300,
+                        type=int, help="number of training epochs")
+    parser.add_argument('--seq_len', default=256, type=int,
+                        help="midi input sequence length")
+    parser.add_argument('--batch_size', default=16,
+                        type=int, help="batch size")
+    parser.add_argument('--g_lrn_rate', default=0.001,
+                        type=float, help="G learning rate")
+    parser.add_argument('--d_lrn_rate', default=0.001,
+                        type=float, help="D learning rate")
 
-    parser.add_argument('--no_pretraining', action='store_true')
-    parser.add_argument('--g_pretraining_epochs', default=5, type=int)
-    parser.add_argument('--d_pretraining_epochs', default=5, type=int)
+    parser.add_argument('--no_pretraining', action='store_true',
+                        help="do not pretrain G or D")
+    parser.add_argument('--g_pretraining_epochs', default=5,
+                        type=int, help="# of G pretraining epochs")
+    parser.add_argument('--d_pretraining_epochs', default=5,
+                        type=int, help="# of D pretraining epochs")
     # parser.add_argument('--freeze_d_every', default=5, type=int)
-    parser.add_argument('--use_sgd', action='store_true')
-    parser.add_argument('--conditional_freezing', action='store_true')
-    parser.add_argument('--label_smoothing', action='store_true')
-    parser.add_argument('--feature_matching', action='store_true')
-    parser.add_argument('--plot_loss', action='store_true')
+    parser.add_argument('--use_sgd', action='store_true',
+                        help="use stochastic gradient descent")
+    parser.add_argument('--conditional_freezing', action='store_true',
+                        help="freeze D when predictions are too good")
+    parser.add_argument('--label_smoothing',
+                        action='store_true', help="????????????????")  # TODO
+    parser.add_argument('--feature_matching', action='store_true',
+                        help="????????????????")  # TODO
+    parser.add_argument('--plot_loss', action='store_true',
+                        help="plot GAN training and validation losses")
 
     args = parser.parse_args()
     MAX_SEQ_LEN = args.seq_len
