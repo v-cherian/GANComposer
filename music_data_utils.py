@@ -569,6 +569,7 @@ class MusicDataLoader(object):
     if filename is not None:
       filename = os.path.join('samples',filename)
       midi.write_midifile(filename, midi_pattern)
+      print('Saved ' + filename)
 
   def save_data(self, filename, song_data, bpm=IDEAL_TEMPO):
     """
