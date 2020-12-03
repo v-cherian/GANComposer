@@ -113,106 +113,117 @@ class MusicDataLoader(object):
           print('Redoing split')
           self.read_data(pace_events)
         else:
-          print('Using saved songs state at ' + saved_songs_path)
-          with open(saved_songs_path,'rb') as fp:
-            self.songs = pickle.load(fp)
+          self.read_saved_songs()
+
+  def read_saved_songs(self):
+	  print('Using saved songs at ' + saved_songs_path)
+    with open(saved_songs_path,'rb') as fp:
+      self.composers, self.songs = pickle.load(fp)
+
+    self.pointer['validation'] = 0
+    self.pointer['test'] = 0
+    self.pointer['train'] = 0
+
+		
+
+
 
   def read_data(self, pace_events):
-      # self.datadir = self.datadir.rstrip(os.sep)
-      train_path = os.path.join(self.datadir,"train")
-      validation_path = os.path.join(self.datadir,"validation")
-      test_path = os.path.join(self.datadir,"test")
-      csv_path = os.path.join(self.datadir,os.path.basename(self.datadir)+".csv")
+    # self.datadir = self.datadir.rstrip(os.sep)
+    train_path = os.path.join(self.datadir,"train")
+    validation_path = os.path.join(self.datadir,"validation")
+    test_path = os.path.join(self.datadir,"test")
+    csv_path = os.path.join(self.datadir,os.path.basename(self.datadir)+".csv")
 
-      if self.composers is None:
-        self.composers = []
-        composers_specified = 0
-      else:
-        composers_specified = 1
-        if debug == 'overfit':
-          self.composers = self.composers[0:1]
-      print (('num composers: {}'.format(len(self.composers))))
-
-      self.songs = {}
-      self.songs['validation'] = []
-      self.songs['test'] = []
-      self.songs['train'] = []
-
-      print("Looking for " + csv_path)
-
-      if not os.path.exists(csv_path):
-          print("No csv found in " + self.datadir)
-          return
-      else:
-          print("Found")
-
-      if os.path.exists(train_path):
-          shutil.rmtree(train_path)
-      if os.path.exists(validation_path):
-          shutil.rmtree(validation_path)
-      if os.path.exists(test_path):
-          shutil.rmtree(test_path)
-
-      for path in [train_path, validation_path, test_path]:
-          os.makedirs(path)
-
-      df = pd.read_csv(csv_path, usecols=['canonical_composer','split','midi_filename'])
-      print("Generating splits...")
-      for row_index,row in df.iterrows():
-          if (row_index+1)%100==0:  # print progress every 100 rows
-              print('Checked csv row {}/{}'.format(row_index,len(df.index)))
-          composer = row['canonical_composer']
-          if composers_specified and composer not in self.composers:
-              continue
-          midi_path = os.path.join(self.datadir,row['midi_filename'])
-          if os.path.isfile(os.path.join(self.datadir,row['midi_filename'])):
-              song_data = self.read_one_file(midi_path, pace_events)
-              if song_data is None:
-                continue
-
-              if not composers_specified and composer not in self.composers:
-                  self.composers.append(composer)
-              midi_path = os.path.join(train_path, os.path.basename(row['midi_filename'])) # reassign midi_path
-              if row['split']=='train':
-                midi_path = os.path.join(train_path, os.path.basename(row['midi_filename'])) # reassign midi_path
-                self.songs['train'].append([midi_path, composer, song_data])
-              elif row['split']=='validation':
-                midi_path = os.path.join(validation_path, os.path.basename(row['midi_filename'])) # reassign midi_path
-                self.songs['validation'].append([midi_path, composer, song_data])
-              elif row['split']=='test':
-                midi_path = os.path.join(test_path, os.path.basename(row['midi_filename'])) # reassign midi_path
-                self.songs['test'].append([midi_path, composer, song_data])
-
-              shutil.copyfile(os.path.join(self.datadir,row['midi_filename']), midi_path)
-      print("Done generating splits")
-      self.composers.sort()
-
-      self.pointer['validation'] = 0
-      self.pointer['test'] = 0
-      self.pointer['train'] = 0
-      # DEBUG: OVERFIT. overfit.
+    if self.composers is None:
+      self.composers = []
+      composers_specified = 0
+    else:
+      composers_specified = 1
       if debug == 'overfit':
-        self.songs['train'] = self.songs['train'][0:1]
-        #print (('DEBUG: trying to overfit on the following (repeating for train/validation/test):')
-        for i in range(200):
-          self.songs['train'].append(self.songs['train'][0])
-        self.songs['validation'] = self.songs['train'][0:1]
-        self.songs['test'] = self.songs['train'][0:1]
-      #print (('lens: train: {}, val: {}, test: {}'.format(len(self.songs['train']), len(self.songs['validation']), len(self.songs['test'])))
-      saved_songs_path = os.path.join(self.datadir,'saved_songs')
+        self.composers = self.composers[0:1]
+    print (('num composers: {}'.format(len(self.composers))))
 
-      if not os.path.exists(saved_songs_path):
-          os.makedirs(saved_songs_path)
+    self.songs = {}
+    self.songs['validation'] = []
+    self.songs['test'] = []
+    self.songs['train'] = []
 
-      if composers_specified:
-        saved_songs_path = os.path.join(saved_songs_path,str(len(self.composers))+'_composers.txt')
-      else:
-        saved_songs_path = os.path.join(saved_songs_path,'all_composers.txt')
+    print("Looking for " + csv_path)
 
-      print('Saving songs state in ' + saved_songs_path)
-      with open(saved_songs_path,'wb') as fp:
-          pickle.dump(self.songs, fp)
-      return self.songs
+    if not os.path.exists(csv_path):
+        print("No csv found in " + self.datadir)
+        return
+    else:
+        print("Found")
+
+    if os.path.exists(train_path):
+        shutil.rmtree(train_path)
+    if os.path.exists(validation_path):
+        shutil.rmtree(validation_path)
+    if os.path.exists(test_path):
+        shutil.rmtree(test_path)
+
+    for path in [train_path, validation_path, test_path]:
+        os.makedirs(path)
+
+    df = pd.read_csv(csv_path, usecols=['canonical_composer','split','midi_filename'])
+    print("Generating splits...")
+    for row_index,row in df.iterrows():
+        if (row_index+1)%100==0:  # print progress every 100 rows
+            print('Checked csv row {}/{}'.format(row_index,len(df.index)))
+        composer = row['canonical_composer']
+        if composers_specified and composer not in self.composers:
+            continue
+        midi_path = os.path.join(self.datadir,row['midi_filename'])
+        if os.path.isfile(os.path.join(self.datadir,row['midi_filename'])):
+            song_data = self.read_one_file(midi_path, pace_events)
+            if song_data is None:
+              continue
+
+            if not composers_specified and composer not in self.composers:
+                self.composers.append(composer)
+            midi_path = os.path.join(train_path, os.path.basename(row['midi_filename'])) # reassign midi_path
+            if row['split']=='train':
+              midi_path = os.path.join(train_path, os.path.basename(row['midi_filename'])) # reassign midi_path
+              self.songs['train'].append([midi_path, composer, song_data])
+            elif row['split']=='validation':
+              midi_path = os.path.join(validation_path, os.path.basename(row['midi_filename'])) # reassign midi_path
+              self.songs['validation'].append([midi_path, composer, song_data])
+            elif row['split']=='test':
+              midi_path = os.path.join(test_path, os.path.basename(row['midi_filename'])) # reassign midi_path
+              self.songs['test'].append([midi_path, composer, song_data])
+
+            shutil.copyfile(os.path.join(self.datadir,row['midi_filename']), midi_path)
+    print("Done generating splits")
+    self.composers.sort()
+
+    self.pointer['validation'] = 0
+    self.pointer['test'] = 0
+    self.pointer['train'] = 0
+    # DEBUG: OVERFIT. overfit.
+    if debug == 'overfit':
+      self.songs['train'] = self.songs['train'][0:1]
+      #print (('DEBUG: trying to overfit on the following (repeating for train/validation/test):')
+      for i in range(200):
+        self.songs['train'].append(self.songs['train'][0])
+      self.songs['validation'] = self.songs['train'][0:1]
+      self.songs['test'] = self.songs['train'][0:1]
+    #print (('lens: train: {}, val: {}, test: {}'.format(len(self.songs['train']), len(self.songs['validation']), len(self.songs['test'])))
+    saved_songs_path = os.path.join(self.datadir,'saved_songs')
+
+    if not os.path.exists(saved_songs_path):
+        os.makedirs(saved_songs_path)
+
+    if composers_specified:
+      saved_songs_path = os.path.join(saved_songs_path,str(len(self.composers))+'_composers.txt')
+    else:
+      saved_songs_path = os.path.join(saved_songs_path,'all_composers.txt')
+
+    print('Saving songs state in ' + saved_songs_path)
+    with open(saved_songs_path,'wb') as fp:
+        pickle.dump([self.composers, self.songs], fp)
+    return self.songs
 
 
   def read_one_file(self, path, pace_events):
