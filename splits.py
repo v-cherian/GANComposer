@@ -1,6 +1,5 @@
 import os
 import shutil
-import csv
 import pandas as pd
 import argparse as ap
 

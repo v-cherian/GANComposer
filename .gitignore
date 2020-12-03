@@ -128,5 +128,13 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+# ignore data and midi samples
+saved_songs/
+test/
+train/
+validation/
+samples/
+models/
+
 #DS_Store
 .DS_Store

@@ -1,7 +1,7 @@
 # Tools to load and save midi files for the rnn-gan-project.
-# 
+#
 # This file has been modified by Christopher John Bayron to support
-# operations in c-rnn-gan.pytorch project. 
+# operations in c-rnn-gan.pytorch project.
 #
 # Written by Olof Mogren, http://mogren.one/
 #
@@ -27,6 +27,9 @@
 import os, midi, math, random, re, sys
 import numpy as np
 from io import BytesIO
+import shutil
+import pandas as pd
+import pickle
 
 GENRE      = 0
 COMPOSER   = 1
@@ -56,23 +59,6 @@ NZ = {
 debug = ''
 #debug = 'overfit'
 
-sources                              = {}
-sources['classical']                 = {}
-
-file_list = {}
-
-file_list['validation'] = [
-'classical/sonata-ish/mozk333c.mid', \
-'classical/sonata-ish/mozk331b.mid', \
-'classical/sonata-ish/mozk313a.mid', \
-'classical/sonata-ish/mozk310b.mid', \
-'classical/sonata-ish/mozk299a.mid', \
-'classical/sonata-ish/mozk622c.mid', \
-'classical/sonata-ish/mozk545b.mid', \
-'classical/sonata-ish/mozk299a.mid'
-]
-
-file_list['test'] = []
 
 
 # normalization, de-normalization functions
@@ -101,112 +87,141 @@ def de_norm_minmax(song_data, ix):
 
 class MusicDataLoader(object):
 
-  def __init__(self, datadir, pace_events=False, tones_per_cell=1, single_composer=None):
-    self.datadir = datadir
+  def __init__(self, datadir, pace_events=False, tones_per_cell=1, composers=None, redo_split = False):
+    self.datadir = datadir.rstrip(os.sep)
     self.output_ticks_per_quarter_note = 384.0
     self.tones_per_cell = tones_per_cell
-    self.single_composer = single_composer
+    self.composers = composers
     self.pointer = {}
     self.pointer['validation'] = 0
     self.pointer['test'] = 0
     self.pointer['train'] = 0
     if not datadir is None:
       print ('Data loader: datadir: {}'.format(datadir))
-      self.read_data(pace_events)
+      if redo_split:
+        self.read_data(pace_events)
+      else:
+        if self.composers is None:
+          saved_songs_path = os.path.join(self.datadir,'saved_songs','all_composers.txt')
+        else:
+          saved_songs_path = os.path.join(self.datadir,'saved_songs',str(len(self.composers)) + '_composers.txt')
+          print('WARNING: using previous songs state at ' + saved_songs_path)
+          print('use --redo_split if this composer list is different from the one used for above state')
 
+        if not os.path.exists(saved_songs_path):
+          print('--redo_split flag excluded but saved variable not found at ' + saved_songs_path)
+          print('Redoing split')
+          self.read_data(pace_events)
+        else:
+          print('Using saved songs state at ' + saved_songs_path)
+          with open(saved_songs_path,'rb') as fp:
+            self.songs = pickle.load(fp)
 
   def read_data(self, pace_events):
-    """
-    read_data takes a datadir with genre subdirs, and composer subsubdirs
-    containing midi files, reads them into training data for an rnn-gan model.
-    Midi music information will be real-valued frequencies of the
-    tones, and intensity taken from the velocity information in
-    the midi files.
+      # self.datadir = self.datadir.rstrip(os.sep)
+      train_path = os.path.join(self.datadir,"train")
+      validation_path = os.path.join(self.datadir,"validation")
+      test_path = os.path.join(self.datadir,"test")
+      csv_path = os.path.join(self.datadir,os.path.basename(self.datadir)+".csv")
 
-    returns a list of tuples, [genre, composer, song_data]
-    Also saves this list in self.songs.
+      if self.composers is None:
+        self.composers = []
+        composers_specified = 0
+      else:
+        composers_specified = 1
+        if debug == 'overfit':
+          self.composers = self.composers[0:1]
+      print (('num composers: {}'.format(len(self.composers))))
 
-    Time steps will be fractions of beat notes (32th notes).
-    """
+      self.songs = {}
+      self.songs['validation'] = []
+      self.songs['test'] = []
+      self.songs['train'] = []
 
-    self.genres = sorted(sources.keys())
-    print (('num genres:{}'.format(len(self.genres))))
-    if self.single_composer is not None:
-      self.composers = [self.single_composer]
-    else:
-      self.composers = []
-      for genre in self.genres:
-        self.composers.extend(sources[genre].keys())
-      if debug == 'overfit':
-        self.composers = self.composers[0:1]
-      self.composers = list(set(self.composers))
-      self.composers.sort()
-    print (('num composers: {}'.format(len(self.composers))))
+      print("Looking for " + csv_path)
 
-    self.songs = {}
-    self.songs['validation'] = []
-    self.songs['test'] = []
-    self.songs['train'] = []
+      if not os.path.exists(csv_path):
+          print("No csv found in " + self.datadir)
+          return
+      else:
+          print("Found")
 
-    # OVERFIT
-    count = 0
+      if os.path.exists(train_path):
+          shutil.rmtree(train_path)
+      if os.path.exists(validation_path):
+          shutil.rmtree(validation_path)
+      if os.path.exists(test_path):
+          shutil.rmtree(test_path)
 
-    for genre in self.genres:
-      # OVERFIT
-      if debug == 'overfit' and count > 20: break
-      for composer in self.composers:
-        # OVERFIT
-        if debug == 'overfit' and composer not in self.composers: continue
-        if debug == 'overfit' and count > 20: break
-        current_path = os.path.join(self.datadir,os.path.join(genre, composer))
-        if not os.path.exists(current_path):
-          print ( 'Path does not exist: {}'.format(current_path))
-          continue
-        files = os.listdir(current_path)
-        #composer_id += 1
-        #if composer_id > max_composers:
-        #  print (('Only using {} composers.'.format(max_composers))
-        #  break
-        for i,f in enumerate(files):
-          # OVERFIT
-          if debug == 'overfit' and count > 20: break
-          count += 1
-          
-          if i % 100 == 99 or i+1 == len(files):
-            print ( 'Reading files {}/{}: {}'.format(genre, composer, (i+1)))
-          if os.path.isfile(os.path.join(current_path,f)):
-            song_data = self.read_one_file(current_path, f, pace_events)
-            if song_data is None:
+      for path in [train_path, validation_path, test_path]:
+          os.makedirs(path)
+
+      df = pd.read_csv(csv_path, usecols=['canonical_composer','split','midi_filename'])
+      print("Generating splits...")
+      for row_index,row in df.iterrows():
+          if (row_index+1)%100==0:  # print progress every 100 rows
+              print('Checked csv row {}/{}'.format(row_index,len(df.index)))
+          composer = row['canonical_composer']
+          if composers_specified and composer not in self.composers:
               continue
-            if os.path.join(os.path.join(genre, composer), f) in file_list['validation']:
-              self.songs['validation'].append([genre, composer, song_data])
-            elif os.path.join(os.path.join(genre, composer), f) in file_list['test']:
-              self.songs['test'].append([genre, composer, song_data])
-            else:
-              self.songs['train'].append([genre, composer, song_data])
+          midi_path = os.path.join(self.datadir,row['midi_filename'])
+          if os.path.isfile(os.path.join(self.datadir,row['midi_filename'])):
+              song_data = self.read_one_file(midi_path, pace_events)
+              if song_data is None:
+                continue
 
-    random.shuffle(self.songs['train'])
-    self.pointer['validation'] = 0
-    self.pointer['test'] = 0
-    self.pointer['train'] = 0
-    # DEBUG: OVERFIT. overfit.
-    if debug == 'overfit':
-      self.songs['train'] = self.songs['train'][0:1]
-      #print (('DEBUG: trying to overfit on the following (repeating for train/validation/test):')
-      for i in range(200):
-        self.songs['train'].append(self.songs['train'][0])
-      self.songs['validation'] = self.songs['train'][0:1]
-      self.songs['test'] = self.songs['train'][0:1]
-    #print (('lens: train: {}, val: {}, test: {}'.format(len(self.songs['train']), len(self.songs['validation']), len(self.songs['test'])))
-    return self.songs
+              if not composers_specified and composer not in self.composers:
+                  self.composers.append(composer)
+              midi_path = os.path.join(train_path, os.path.basename(row['midi_filename'])) # reassign midi_path
+              if row['split']=='train':
+                midi_path = os.path.join(train_path, os.path.basename(row['midi_filename'])) # reassign midi_path
+                self.songs['train'].append([midi_path, composer, song_data])
+              elif row['split']=='validation':
+                midi_path = os.path.join(validation_path, os.path.basename(row['midi_filename'])) # reassign midi_path
+                self.songs['validation'].append([midi_path, composer, song_data])
+              elif row['split']=='test':
+                midi_path = os.path.join(test_path, os.path.basename(row['midi_filename'])) # reassign midi_path
+                self.songs['test'].append([midi_path, composer, song_data])
 
-  def read_one_file(self, path, filename, pace_events):
+              shutil.copyfile(os.path.join(self.datadir,row['midi_filename']), midi_path)
+      print("Done generating splits")
+      self.composers.sort()
+
+      self.pointer['validation'] = 0
+      self.pointer['test'] = 0
+      self.pointer['train'] = 0
+      # DEBUG: OVERFIT. overfit.
+      if debug == 'overfit':
+        self.songs['train'] = self.songs['train'][0:1]
+        #print (('DEBUG: trying to overfit on the following (repeating for train/validation/test):')
+        for i in range(200):
+          self.songs['train'].append(self.songs['train'][0])
+        self.songs['validation'] = self.songs['train'][0:1]
+        self.songs['test'] = self.songs['train'][0:1]
+      #print (('lens: train: {}, val: {}, test: {}'.format(len(self.songs['train']), len(self.songs['validation']), len(self.songs['test'])))
+      saved_songs_path = os.path.join(self.datadir,'saved_songs')
+
+      if not os.path.exists(saved_songs_path):
+          os.makedirs(saved_songs_path)
+
+      if composers_specified:
+        saved_songs_path = os.path.join(saved_songs_path,str(len(self.composers))+'_composers.txt')
+      else:
+        saved_songs_path = os.path.join(saved_songs_path,'all_composers.txt')
+
+      print('Saving songs state in ' + saved_songs_path)
+      with open(saved_songs_path,'wb') as fp:
+          pickle.dump(self.songs, fp)
+      return self.songs
+
+
+  def read_one_file(self, path, pace_events):
     try:
       if debug:
-        print (('Reading {}'.format(os.path.join(path,filename))))
-      midi_pattern = midi.read_midifile(os.path.join(path,filename))
+        print ('Reading {}'.format(path))
+      midi_pattern = midi.read_midifile(path)
     except:
-      print ( 'Error reading {}'.format(os.path.join(path,filename)))
+      print ('Error reading {}'.format(path))
       return None
     #
     # Interpreting the midi pattern.
@@ -258,16 +273,16 @@ class MusicDataLoader(object):
     # TODO 1: Figure out pitch.
     # TODO 2: Figure out different channels and instruments.
     #
-    
+
     song_data = []
     tempos = []
-    
+
     # Tempo:
     ticks_per_quarter_note = float(midi_pattern.resolution)
     #print (('Resoluton: {}'.format(ticks_per_quarter_note))
     input_ticks_per_output_tick = ticks_per_quarter_note/self.output_ticks_per_quarter_note
     #if debug == 'overfit': input_ticks_per_output_tick = 1.0
-    
+
     # Multiply with output_ticks_pr_input_tick for output ticks.
     for track in midi_pattern:
       last_event_input_tick=0
@@ -299,7 +314,7 @@ class MusicDataLoader(object):
           note[VELOCITY]   = float(event.data[1])
           note[BEGIN_TICK] = begin_tick
           not_closed_notes.append(note)
-          
+
         last_event_input_tick += event.tick
       for e in not_closed_notes:
         #print (('Warning: found no NoteOffEvent for this note. Will close it. {}'.format(e))
@@ -329,7 +344,7 @@ class MusicDataLoader(object):
     """
       get_batch() returns a batch from self.songs, as a
       pair of tensors (genrecomposer, song_data).
-      
+
       The first tensor is a tensor of genres and composers
         (as two one-hot vectors that are concatenated).
       The second tensor contains song data.
@@ -353,7 +368,7 @@ class MusicDataLoader(object):
       in the sequence. There might be more clever ways
       of doing this. It's not reasonable to change composer
       or genre in the middle of a song.
-      
+
       A tone  has a feature telling us the pause before it.
 
     """
@@ -367,18 +382,18 @@ class MusicDataLoader(object):
       batch = self.songs[part][self.pointer[part]:self.pointer[part]+batchsize]
       self.pointer[part] += batchsize
       # subtract two for start-time and channel, which we don't include.
-      num_meta_features = len(self.genres)+len(self.composers)
+      num_meta_features = len(self.composers)
       # All features except timing are multiplied with tones_per_cell (default 1)
       num_song_features = NUM_FEATURES_PER_TONE*self.tones_per_cell+1
-      batch_genrecomposer = np.ndarray(shape=[batchsize, num_meta_features])
+      batch_composer = np.ndarray(shape=[batchsize, num_meta_features])
       batch_songs = np.ndarray(shape=[batchsize, songlength, num_song_features])
 
       for s in range(len(batch)):
         songmatrix = np.ndarray(shape=[songlength, num_song_features])
         composeronehot = onehot(self.composers.index(batch[s][1]), len(self.composers))
-        genreonehot = onehot(self.genres.index(batch[s][0]), len(self.genres))
-        genrecomposer = np.concatenate([genreonehot, composeronehot])
-        
+        # genreonehot = onehot(self.genres.index(batch[s][0]), len(self.genres))
+        # genrecomposer = np.concatenate([genreonehot, composeronehot])
+
         #random position:
         begin = 0
         if len(batch[s][SONG_DATA]) > songlength*self.tones_per_cell:
@@ -418,7 +433,7 @@ class MusicDataLoader(object):
           n += tone_count
         #if s == 0 and self.pointer[part] == batchsize:
         #  print ( songmatrix[0:10,:]
-        batch_genrecomposer[s,:] = genrecomposer
+        batch_composer[s,:] = composeronehot
         batch_songs[s,:,:] = songmatrix
 
       # input normalization
@@ -428,19 +443,19 @@ class MusicDataLoader(object):
         norm_std(batch_songs, VELOCITY)
         norm_minmax(batch_songs, TONE)
 
-      return batch_genrecomposer, batch_songs
+      return batch_composer, batch_songs
 
     else:
       raise 'get_batch() called but self.songs is not initialized.'
-  
+
   def get_num_song_features(self):
     return NUM_FEATURES_PER_TONE*self.tones_per_cell+1
   def get_num_meta_features(self):
-    return len(self.genres)+len(self.composers)
+    return len(self.composers)
 
   def get_midi_pattern(self, song_data, bpm, normalized=True):
     """
-    get_midi_pattern takes a song in internal representation 
+    get_midi_pattern takes a song in internal representation
     (a tensor of dimensions [songlength, self.num_song_features]).
     the three values are length, frequency, velocity.
     if velocity of a frame is zero, no midi event will be
@@ -491,7 +506,7 @@ class MusicDataLoader(object):
     # This approach means that we do not currently support
     #   tempo change events.
     #
-    
+
     # Tempo:
     # Multiply with output_ticks_pr_input_tick for output ticks.
     midi_pattern = midi.Pattern([], resolution=int(self.output_ticks_per_quarter_note))
@@ -499,7 +514,7 @@ class MusicDataLoader(object):
     cur_track.append(midi.events.SetTempoEvent(tick=0, bpm=IDEAL_TEMPO))
     future_events = {}
     last_event_tick = 0
-    
+
     ticks_to_this_tone = 0.0
     song_events_absolute_ticks = []
     abs_tick_note_beginning = 0.0
@@ -521,7 +536,7 @@ class MusicDataLoader(object):
         tick_len           = int(round(frame[offset+LENGTH]))
         tone               = int(round(frame[offset+TONE]))
         velocity           = min(int(round(frame[offset+VELOCITY])),127)
-        
+
         if tone is not None and velocity > 0 and tick_len > 0:
           # range-check with preserved tone, changed one octave:
           while tone < 0:   tone += 12
@@ -544,7 +559,7 @@ class MusicDataLoader(object):
       event.tick = int(round(rel_tick))
       cur_track.append(event)
       abs_tick_note_beginning=abs_tick
-    
+
     cur_track.append(midi.EndOfTrackEvent(tick=int(self.output_ticks_per_quarter_note)))
     midi_pattern.append(cur_track)
 
@@ -552,11 +567,13 @@ class MusicDataLoader(object):
 
   def save_midi_pattern(self, filename, midi_pattern):
     if filename is not None:
+      filename = os.path.join('samples',filename)
       midi.write_midifile(filename, midi_pattern)
+      print('Saved ' + filename)
 
   def save_data(self, filename, song_data, bpm=IDEAL_TEMPO):
     """
-    save_data takes a filename and a song in internal representation 
+    save_data takes a filename and a song in internal representation
     (a tensor of dimensions [songlength, 3]).
     the three values are length, frequency, velocity.
     if velocity of a frame is zero, no midi event will be
@@ -572,7 +589,7 @@ class MusicDataLoader(object):
 
 def tone_to_freq(tone):
   """
-    returns the frequency of a tone. 
+    returns the frequency of a tone.
 
     formulas from
       * https://en.wikipedia.org/wiki/MIDI_Tuning_Standard
