@@ -278,9 +278,8 @@ def run_epoch(model, optimizer, criterion, dataloader, ep, num_ep,
     song_data = g_feats.squeeze().cpu()
     song_data = song_data.detach().numpy()
 
-    if (ep+1) == num_ep:
-        midi_data = dataloader.save_data(
-            'sample' + '_'+time.strftime("%m%d%Y_%H%M%S")+'.mid', song_data)
+    if ep % (num_ep/5) == 0 or (ep+1) == num_ep:
+        midi_data = dataloader.save_data('sample' + '_'+time.strftime("%m%d%Y_%H%M%S")+'.mid', song_data)
     else:
         midi_data = dataloader.save_data(None, song_data)
         # print(midi_data[0][:16])
@@ -378,7 +377,7 @@ def main(args):
         ax.plot([loss[3] for loss in losses], label='D Validation Loss')
         plt.legend()
         # plt.show()
-        plt.savefig('loss_' + args.num_epochs + '_' + time.strftime("%m%d%Y_%H%M%S") + '.png')
+        plt.savefig('loss_' + str(args.num_epochs) + '_' + time.strftime("%m%d%Y_%H%M%S") + '.png')
 
 
 if __name__ == "__main__":
