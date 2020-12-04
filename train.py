@@ -377,7 +377,8 @@ def main(args):
         ax.plot([loss[2] for loss in losses], label='G Validation Loss')
         ax.plot([loss[3] for loss in losses], label='D Validation Loss')
         plt.legend()
-        plt.show()
+        # plt.show()
+        plt.savefig('loss_' + args.num_epochs + '_' + time.strftime("%m%d%Y_%H%M%S") + '.png')
 
 
 if __name__ == "__main__":
