@@ -94,14 +94,13 @@ class DLoss(nn.Module):
         return torch.mean(batch_loss)
 
 
-def run_training(model, optimizer, criterion, dataloader, freeze_g=False, freeze_d=False):
+def run_training(model, optimizer, criterion, dataloader, freeze_g=False, freeze_d=False, n_critic=1):
     ''' Run single training epoch
     '''
-
+    critic = 0
     num_feats = dataloader.get_num_song_features()
     dataloader.rewind(part='train')
-    batch_meta, batch_song = dataloader.get_batch(
-        BATCH_SIZE, MAX_SEQ_LEN, part='train')
+    batch_meta, batch_song = dataloader.get_batch(BATCH_SIZE, MAX_SEQ_LEN, part='train')
 
     model['g'].train()
     model['d'].train()
@@ -124,31 +123,30 @@ def run_training(model, optimizer, criterion, dataloader, freeze_g=False, freeze
         d_state = model['d'].init_hidden(real_batch_sz)
 
         #### GENERATOR ####
-        if not freeze_g:
-            optimizer['g'].zero_grad()
-        # prepare inputs
-        z = torch.empty([real_batch_sz, MAX_SEQ_LEN, num_feats]
-                        ).uniform_()  # random vector
-        batch_song = torch.Tensor(batch_song)
+        if critic % n_critic == 0:
+            if not freeze_g:
+                optimizer['g'].zero_grad()
+            # prepare inputs
+            z = torch.empty([real_batch_sz, MAX_SEQ_LEN, num_feats]).uniform_()  # random vector
+            batch_song = torch.Tensor(batch_song)
 
-        # feed inputs to generator
-        g_feats, _ = model['g'](z, g_states)
+            # feed inputs to generator
+            g_feats, _ = model['g'](z, g_states)
 
-        # calculate loss, backprop, and update weights of G
-        if isinstance(criterion['g'], GLoss):
-            d_logits_gen, _, _ = model['d'](g_feats, d_state)
-            loss['g'] = criterion['g'](d_logits_gen)
-        else:  # feature matching
-            # feed real and generated input to discriminator
-            _, d_feats_real, _ = model['d'](batch_song, d_state)
-            _, d_feats_gen, _ = model['d'](g_feats, d_state)
-            loss['g'] = criterion['g'](d_feats_real, d_feats_gen)
+            # calculate loss, backprop, and update weights of G
+            if isinstance(criterion['g'], GLoss):
+                d_logits_gen, _, _ = model['d'](g_feats, d_state)
+                loss['g'] = criterion['g'](d_logits_gen)
+            else:  # feature matching
+                # feed real and generated input to discriminator
+                _, d_feats_real, _ = model['d'](batch_song, d_state)
+                _, d_feats_gen, _ = model['d'](g_feats, d_state)
+                loss['g'] = criterion['g'](d_feats_real, d_feats_gen)
 
-        if not freeze_g:
-            loss['g'].backward()
-            nn.utils.clip_grad_norm_(
-                model['g'].parameters(), max_norm=MAX_GRAD_NORM)
-            optimizer['g'].step()
+            if not freeze_g:
+                loss['g'].backward()
+                nn.utils.clip_grad_norm_(model['g'].parameters(), max_norm=MAX_GRAD_NORM)
+                optimizer['g'].step()
 
         #### DISCRIMINATOR ####
         if not freeze_d:
@@ -161,14 +159,12 @@ def run_training(model, optimizer, criterion, dataloader, freeze_g=False, freeze
         loss['d'] = criterion['d'](d_logits_real, d_logits_gen)
         if not freeze_d:
             loss['d'].backward()
-            nn.utils.clip_grad_norm_(
-                model['d'].parameters(), max_norm=MAX_GRAD_NORM)
+            nn.utils.clip_grad_norm_(model['d'].parameters(), max_norm=MAX_GRAD_NORM)
             optimizer['d'].step()
 
         g_loss_total += loss['g'].item()
         d_loss_total += loss['d'].item()
-        num_corrects += (d_logits_real > 0.5).sum().item() + \
-            (d_logits_gen < 0.5).sum().item()
+        num_corrects += (d_logits_real > 0.5).sum().item() + (d_logits_gen < 0.5).sum().item()
         num_sample += real_batch_sz
 
         # fetch next batch
@@ -212,8 +208,7 @@ def run_validation(model, criterion, dataloader):
 
         #### GENERATOR ####
         # prepare inputs
-        z = torch.empty([real_batch_sz, MAX_SEQ_LEN, num_feats]
-                        ).uniform_()  # random vector
+        z = torch.empty([real_batch_sz, MAX_SEQ_LEN, num_feats]).uniform_()  # random vector
         batch_song = torch.Tensor(batch_song)
 
         # feed inputs to generator
@@ -231,13 +226,11 @@ def run_validation(model, criterion, dataloader):
 
         g_loss_total += g_loss.item()
         d_loss_total += d_loss.item()
-        num_corrects += (d_logits_real > 0.5).sum().item() + \
-            (d_logits_gen < 0.5).sum().item()
+        num_corrects += (d_logits_real > 0.5).sum().item() + (d_logits_gen < 0.5).sum().item()
         num_sample += real_batch_sz
 
         # fetch next batch
-        batch_meta, batch_song = dataloader.get_batch(
-            BATCH_SIZE, MAX_SEQ_LEN, part='validation')
+        batch_meta, batch_song = dataloader.get_batch(BATCH_SIZE, MAX_SEQ_LEN, part='validation')
 
     g_loss_avg, d_loss_avg = 0.0, 0.0
     d_acc = 0.0
@@ -251,15 +244,12 @@ def run_validation(model, criterion, dataloader):
 
 
 def run_epoch(model, optimizer, criterion, dataloader, ep, num_ep,
-              freeze_g=False, freeze_d=False, pretraining=False):
+              freeze_g=False, freeze_d=False, pretraining=False, n_critic=1):
     ''' Run a single epoch
     '''
-    model, trn_g_loss, trn_d_loss, trn_acc = \
-        run_training(model, optimizer, criterion, dataloader,
-                     freeze_g=freeze_g, freeze_d=freeze_d)
+    model, trn_g_loss, trn_d_loss, trn_acc = run_training(model, optimizer, criterion, dataloader, freeze_g=freeze_g, freeze_d=freeze_d, n_critic=n_critic)
 
-    val_g_loss, val_d_loss, val_acc = run_validation(
-        model, criterion, dataloader)
+    val_g_loss, val_d_loss, val_acc = run_validation(model, criterion, dataloader)
 
     if pretraining:
         print("Pretraining Epoch %d/%d " % (ep+1, num_ep),
@@ -290,10 +280,10 @@ def run_epoch(model, optimizer, criterion, dataloader, ep, num_ep,
 
     if (ep+1) == num_ep:
         midi_data = dataloader.save_data(
-            'sample' + '_'+START_TIME+'.mid', song_data)
+            'sample' + '_'+time.strftime("%m%d%Y_%H%M%S")+'.mid', song_data)
     else:
         midi_data = dataloader.save_data(None, song_data)
-        print(midi_data[0][:16])
+        # print(midi_data[0][:16])
     # -- DEBUG --
 
     return model, trn_acc, trn_g_loss, trn_d_loss, val_g_loss, val_d_loss
@@ -302,8 +292,7 @@ def run_epoch(model, optimizer, criterion, dataloader, ep, num_ep,
 def main(args):
     ''' Training sequence
     '''
-    dataloader = music_data_utils.MusicDataLoader(
-        args.data_dir, composers=args.composers, redo_split=args.redo_split)
+    dataloader = music_data_utils.MusicDataLoader(args.data_dir, composers=args.composers, redo_split=args.redo_split)
     num_feats = dataloader.get_num_song_features()
 
     # First checking if GPU is available
@@ -394,50 +383,31 @@ def main(args):
 if __name__ == "__main__":
 
     parser = ArgumentParser()
-    parser.add_argument('--load_g', action='store_true',
-                        help="load G model parameters")
-    parser.add_argument('--load_d', action='store_true',
-                        help="load D model parameters")
-    parser.add_argument('--no_save_g', action='store_true',
-                        help="do not save G parameters")
-    parser.add_argument('--no_save_d', action='store_true',
-                        help="do not save D parameters")
+    parser.add_argument('--load_g', action='store_true', help="load G model parameters")
+    parser.add_argument('--load_d', action='store_true', help="load D model parameters")
+    parser.add_argument('--no_save_g', action='store_true', help="do not save G parameters")
+    parser.add_argument('--no_save_d', action='store_true', help="do not save D parameters")
 
-    parser.add_argument(
-        '--data_dir', default='data/maestro-v2.0.0', help="path to data directory")
-    parser.add_argument('--composers', nargs='+',
-                        default=None, help="composers to train on")
+    parser.add_argument('--data_dir', default='data/maestro-v2.0.0', help="data directory path")
+    parser.add_argument('--composers', nargs='+', default=None, help="composers to train on")
     # add in flag to use saved variable
-    parser.add_argument('--redo_split', action='store_true',
-                        help="use saved variables")
-    parser.add_argument('--num_epochs', default=300,
-                        type=int, help="number of training epochs")
-    parser.add_argument('--seq_len', default=256, type=int,
-                        help="midi input sequence length")
-    parser.add_argument('--batch_size', default=16,
-                        type=int, help="batch size")
-    parser.add_argument('--g_lrn_rate', default=0.001,
-                        type=float, help="G learning rate")
-    parser.add_argument('--d_lrn_rate', default=0.001,
-                        type=float, help="D learning rate")
+    parser.add_argument('--redo_split', action='store_true', help="use saved variables")
+    parser.add_argument('--num_epochs', default=300, type=int, help="number of training epochs")
+    parser.add_argument('--seq_len', default=256, type=int, help="midi input sequence length")
+    parser.add_argument('--batch_size', default=16, type=int, help="batch size")
+    parser.add_argument('--g_lrn_rate', default=0.001, type=float, help="G learning rate")
+    parser.add_argument('--d_lrn_rate', default=0.001, type=float, help="D learning rate")
 
-    parser.add_argument('--no_pretraining', action='store_true',
-                        help="do not pretrain G or D")
-    parser.add_argument('--g_pretraining_epochs', default=5,
-                        type=int, help="# of G pretraining epochs")
-    parser.add_argument('--d_pretraining_epochs', default=5,
-                        type=int, help="# of D pretraining epochs")
+    parser.add_argument('--no_pretraining', action='store_true', help="do not pretrain G or D")
+    parser.add_argument('--g_pretraining_epochs', default=5, type=int, help="# of G pretraining epochs")
+    parser.add_argument('--d_pretraining_epochs', default=5, type=int, help="# of D pretraining epochs")
     # parser.add_argument('--freeze_d_every', default=5, type=int)
-    parser.add_argument('--use_sgd', action='store_true',
-                        help="use stochastic gradient descent")
-    parser.add_argument('--conditional_freezing', action='store_true',
-                        help="freeze D when predictions are too good")
-    parser.add_argument('--label_smoothing',
-                        action='store_true', help="????????????????")  # TODO
-    parser.add_argument('--feature_matching', action='store_true',
-                        help="????????????????")  # TODO
-    parser.add_argument('--plot_loss', action='store_true',
-                        help="plot GAN training and validation losses")
+    parser.add_argument('--use_sgd', action='store_true', help="use stochastic gradient descent")
+    parser.add_argument('--conditional_freezing', action='store_true', help="freeze D when predictions are too good")
+    parser.add_argument('--label_smoothing', action='store_true', help="????????????????")  # TODO
+    parser.add_argument('--feature_matching', action='store_true', help="????????????????")  # TODO
+    parser.add_argument('--plot_loss', action='store_true', help="plot GAN training and validation losses")
+    parser.add_argument('--n_critic', default=1, type=int, help="how often to update G with D")
 
     args = parser.parse_args()
     MAX_SEQ_LEN = args.seq_len
