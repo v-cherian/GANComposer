@@ -170,6 +170,8 @@ def run_training(model, optimizer, criterion, dataloader, freeze_g=False, freeze
         # fetch next batch
         batch_meta, batch_song = dataloader.get_batch(
             BATCH_SIZE, MAX_SEQ_LEN, part='train')
+        
+        critic += 1
 
     g_loss_avg, d_loss_avg = 0.0, 0.0
     d_acc = 0.0

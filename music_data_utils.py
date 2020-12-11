@@ -95,7 +95,6 @@ def de_norm_minmax(song_data, ix):
 class MusicDataLoader(object):
 
     def __init__(self, datadir, pace_events=False, tones_per_cell=1, composers=None, redo_split=False):
-        self.datadir = datadir.rstrip(os.sep)
         self.output_ticks_per_quarter_note = 384.0
         self.tones_per_cell = tones_per_cell
         self.composers = composers
@@ -104,6 +103,7 @@ class MusicDataLoader(object):
         self.pointer['test'] = 0
         self.pointer['train'] = 0
         if not datadir is None:
+            self.datadir = datadir.rstrip(os.sep)
             print('Data loader: datadir: {}'.format(datadir))
             if redo_split:
                 self.read_data(pace_events)
