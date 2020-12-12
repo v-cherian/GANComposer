@@ -4,15 +4,15 @@
 
 This repository contains four models for generating music trained on midi files: C-RNN-GAN, GPT, LSTM, and CNN. Each model was trained on midi files from the Maestro v2.0.0 dataset, contained in ./data/. Instructions for running each model can be found in their respective sections below.
 
-# C-RNN-GAN
+## C-RNN-GAN
 
-## Overview
+### Overview
 
 The original implementation of this model was developed by Olof Mogren in TensorFlow and can be found [here](https://github.com/olofmogren/c-rnn-gan). A PyTorch version of this project was then created here by CJ Bayron [here](https://github.com/cjbayron). (In a nutshell, C-RNN-GAN is a GAN variant where both the Generator and the Discriminator are RNNs, with each output at each timestep from the Generator correspondingly fed into each timestep as input to the Discriminator. The goal is to train the Generator to output structured sequences, such as MIDI music which was used in the paper. If you'd like to know more, head over to this [link](http://mogren.one/publications/2016/c-rnn-gan/) or read the [paper](http://mogren.one/publications/2016/c-rnn-gan/mogren2016crnngan.pdf).
 
 We started with Bayron's model and tweaked it to use the Maestro Dataset. 
 
-## Setup
+### Setup
 
 Install the following packages with pip:
 
@@ -24,7 +24,7 @@ pip install git+https://github.com/vishnubob/python-midi@feature/python3
 
 Note: do not install midi via `pip install py-midi`. This will result in `AttributeError: module 'midi' has no attribute 'Pattern'` when training. The last `pip install` line above installs directly from git which should not produce this error.
 
-## Status
+### Status
 
 The implementation can work well on simple sequences such as `a(n+1) = 2*a(n)`, where each element is twice of the previous. You can try this by executing:
 ```
@@ -53,7 +53,7 @@ $ python train.py --use_sgd --g_lrn_rate=0.01 --d_lrn_rate=0.005 --label_smoothi
 * Use feature matching for G loss (refer to [paper](http://mogren.one/publications/2016/c-rnn-gan/mogren2016crnngan.pdf) for more info)
 * Output: [sample2.mid](samples/sample2.mid)
 
-## Deviations from Original
+### Deviations from Original
 
 This implementation is not an exact port of the original. These are some of the differences in particular:
 
@@ -63,40 +63,40 @@ This implementation is not an exact port of the original. These are some of the 
 * Pitch is not represented as frequency, but simply as numerical representation of each tone in MIDI (e.g. C3 = 60)
 * Training is done only on small subset of classical data (sonata-sounding pieces of Mozart in particular, see [sonata-ish](data/classical/sonata-ish))
 
-## Prerequisites
+### Prerequisites
 
 * Python 3.6
 * PyTorch
 * [python3-midi](https://github.com/louisabraham/python3-midi)
 
-## License
+### License
 
 This project is licensed under the Apache License, Version 2.0 - see the [LICENSE](LICENSE) file for details
 
 
-# GPT
+## GPT
 
-## Overview
+### Overview
 
-## Running The Model
+### Running The Model
 
 This project can be run by running all cells in GPT.ipynb
 
 
-# LSTM
+## LSTM
 
-## Overview 
+### Overview 
 
-## Running The Model
+### Running The Model
 
 This project can be run by running all cells in LSTM.ipynb
 
-# CNN
+## CNN
 
-## Overview 
+### Overview 
 
 This is a CNN model looks at sequences of twenty pitch values to predict the next pitch value. It consists of 2 Conv1d layers followed by 3 fully-connected layers, ReLU, and Dropout. There is a final fully-connected layer which outputs the next pitch value prediction.
 
-## Running The Model
+### Running The Model
 
 This project can be run by running all cells in CNN.ipynb
