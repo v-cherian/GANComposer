@@ -53,15 +53,14 @@ $ python train.py --use_sgd --g_lrn_rate=0.01 --d_lrn_rate=0.005 --label_smoothi
 * Use feature matching for G loss (refer to [paper](http://mogren.one/publications/2016/c-rnn-gan/mogren2016crnngan.pdf) for more info)
 * Output: [sample2.mid](samples/sample2.mid)
 
-### Deviations from Original
+Additional flags to use:
+new flags:
+* `--data_dir`: takes 1 argument which is path to dataset containing a csv (if this flag is left out, it defaults to data/maestro-v2.0.0)
 
-This implementation is not an exact port of the original. These are some of the differences in particular:
+* `--composers`: takes at least 1 argument (separated by spaces) of composer names to train on. Must match exactly what is written in csv 'canonical_composer' column (if this flag is left out, it defaults to training all composers)
 
-* Different set of hyperparameters
-* Added label smoothing
-* Added option to use Adam optimization
-* Pitch is not represented as frequency, but simply as numerical representation of each tone in MIDI (e.g. C3 = 60)
-* Training is done only on small subset of classical data (sonata-sounding pieces of Mozart in particular, see [sonata-ish](data/classical/sonata-ish))
+* `--redo_split`: takes no arguments; tells model to recreate test, validation, and training splits and process again. Without this flag, the model will look for a saved and processed songs variable in the [data_dir]/saved_variables/ directory. If no composers are specified with --composers, the songs variable will be restored from 'all_composers.txt'. If [num] composers are specified, it will be restored from [num] composers.txt.
+Ex: use `--redo_split` if after training on Composer A, you decide to train on Composer B, as otherwise the model will restore from 1_composers.txt which would be saved from training on Composer A.
 
 ### Prerequisites
 
