@@ -54,7 +54,7 @@ $ python train.py --use_sgd --g_lrn_rate=0.01 --d_lrn_rate=0.005 --label_smoothi
 * Output: [sample2.mid](samples/sample2.mid)
 
 Additional flags to use:
-new flags:
+
 * `--data_dir`: takes 1 argument which is path to dataset containing a csv (if this flag is left out, it defaults to data/maestro-v2.0.0)
 
 * `--composers`: takes at least 1 argument (separated by spaces) of composer names to train on. Must match exactly what is written in csv 'canonical_composer' column (if this flag is left out, it defaults to training all composers)
