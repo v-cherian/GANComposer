@@ -1,8 +1,16 @@
-# Music Generation using C-RNN-GAN in PyTorch
+# AI Music Generation
 
 ## Introduction
 
-This project is a PyTorch implementation of [C-RNN-GAN](https://github.com/olofmogren/c-rnn-gan), which was originally developed in TensorFlow. In a nutshell, C-RNN-GAN is a GAN variant where both the Generator and the Discriminator are RNNs, with each output at each timestep from the Generator correspondingly fed into each timestep as input to the Discriminator. The goal is to train the Generator to output structured sequences, such as MIDI music which was used in the paper. If you'd like to know more, head over to this [link](http://mogren.one/publications/2016/c-rnn-gan/) or read the [paper](http://mogren.one/publications/2016/c-rnn-gan/mogren2016crnngan.pdf).
+This repository contains four models for generating music trained on midi files: C-RNN-GAN, GPT, LSTM, and CNN. Each model was trained on midi files from the Maestro v2.0.0 dataset, contained in ./data/. Instructions for running each model can be found in their respective sections below.
+
+# C-RNN-GAN
+
+## Overview
+
+The original implementation of this model was developed by Olof Mogren in TensorFlow and can be found [here](https://github.com/olofmogren/c-rnn-gan). A PyTorch version of this project was then created here by CJ Bayron [here](https://github.com/cjbayron). (In a nutshell, C-RNN-GAN is a GAN variant where both the Generator and the Discriminator are RNNs, with each output at each timestep from the Generator correspondingly fed into each timestep as input to the Discriminator. The goal is to train the Generator to output structured sequences, such as MIDI music which was used in the paper. If you'd like to know more, head over to this [link](http://mogren.one/publications/2016/c-rnn-gan/) or read the [paper](http://mogren.one/publications/2016/c-rnn-gan/mogren2016crnngan.pdf).
+
+We started with Bayron's model and tweaked it to use the Maestro Dataset. 
 
 ## Setup
 
@@ -64,3 +72,31 @@ This implementation is not an exact port of the original. These are some of the 
 ## License
 
 This project is licensed under the Apache License, Version 2.0 - see the [LICENSE](LICENSE) file for details
+
+
+# GPT
+
+## Overview
+
+## Running The Model
+
+This project can be run by running all cells in GPT.ipynb
+
+
+# LSTM
+
+## Overview 
+
+## Running The Model
+
+This project can be run by running all cells in LSTM.ipynb
+
+# CNN
+
+## Overview 
+
+This is a CNN model looks at sequences of twenty pitch values to predict the next pitch value. It consists of 2 Conv1d layers followed by 3 fully-connected layers, ReLU, and Dropout. There is a final fully-connected layer which outputs the next pitch value prediction.
+
+## Running The Model
+
+This project can be run by running all cells in CNN.ipynb
