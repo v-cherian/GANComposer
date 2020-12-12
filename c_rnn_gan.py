@@ -24,7 +24,7 @@ import torch.nn.functional as F
 class Generator(nn.Module):
     ''' C-RNN-GAN generator
     '''
-    def __init__(self, num_feats, hidden_units=256, drop_prob=0.6, use_cuda=False):
+    def __init__(self, num_feats, hidden_units=256, drop_prob=0.2, use_cuda=False):
         super(Generator, self).__init__()
 
         # params
@@ -101,7 +101,7 @@ class Generator(nn.Module):
 class Discriminator(nn.Module):
     ''' C-RNN-GAN discrminator
     '''
-    def __init__(self, num_feats, hidden_units=256, drop_prob=0.6, use_cuda=False):
+    def __init__(self, num_feats, hidden_units=256, drop_prob=0.2, use_cuda=False):
 
         super(Discriminator, self).__init__()
 
