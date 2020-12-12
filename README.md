@@ -77,7 +77,7 @@ This project is licensed under the Apache License, Version 2.0 - see the [LICENS
 ## GPT
 
 ### Overview
-
+The GPT implemented received a sequence of integer note values and learn the inherent structures of the notes.
 ### Running The Model
 
 This project can be run by running all cells in GPT.ipynb
@@ -86,7 +86,7 @@ This project can be run by running all cells in GPT.ipynb
 ## LSTM
 
 ### Overview 
-
+The LSTM implemented looked at the notes values of a sequence of lenth 20 and predict the next note.
 ### Running The Model
 
 This project can be run by running all cells in LSTM.ipynb
