@@ -1,4 +1,4 @@
-# AI Music Generation
+# AI Music Generation README
 
 ## Introduction
 
@@ -24,7 +24,7 @@ pip install git+https://github.com/vishnubob/python-midi@feature/python3
 
 Note: do not install midi via `pip install py-midi`. This will result in `AttributeError: module 'midi' has no attribute 'Pattern'` when training. The last `pip install` line above installs directly from git which should not produce this error.
 
-### Status
+### Running the Model
 
 The implementation can work well on simple sequences such as `a(n+1) = 2*a(n)`, where each element is twice of the previous. You can try this by executing:
 ```
@@ -77,7 +77,7 @@ This project is licensed under the Apache License, Version 2.0 - see the [LICENS
 
 ### Overview
 The GPT implemented received a sequence of integer note values and learn the inherent structures of the notes.
-### Running The Model
+### Running the Model
 
 This project can be run by running all cells in GPT.ipynb
 
@@ -86,7 +86,7 @@ This project can be run by running all cells in GPT.ipynb
 
 ### Overview 
 The LSTM implemented looked at the notes values of a sequence of lenth 20 and predict the next note.
-### Running The Model
+### Running the Model
 
 This project can be run by running all cells in LSTM.ipynb
 
@@ -96,6 +96,6 @@ This project can be run by running all cells in LSTM.ipynb
 
 This is a CNN model looks at sequences of twenty pitch values to predict the next pitch value. It consists of 2 Conv1d layers followed by 3 fully-connected layers, ReLU, and Dropout. There is a final fully-connected layer which outputs the next pitch value prediction.
 
-### Running The Model
+### Running the Model
 
 This project can be run by running all cells in CNN.ipynb
